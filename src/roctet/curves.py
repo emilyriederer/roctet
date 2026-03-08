@@ -1,19 +1,20 @@
 import numpy as np
 import polars as pl
-from scipy.stats import beta 
+from scipy.stats import beta
 
-def _derive_params(auc:float, sum_control:float) -> tuple[float,float]:
+
+def _derive_params(auc: float, sum_control: float) -> tuple[float, float]:
     """Derive beta parameters for AUC curve
 
     Derive alpha and beta parameters for a Beta distribution based on the targeted AUC
     and a measure of spread/certainty. AUC under the CDF is essentially the expected
     value of the Beta distribution (b / b+a), and the sum of alpha and beta characterizes
-    the certainty of the distribution. 
+    the certainty of the distribution.
 
-    Mathematically, the beta distribution is unrelated to AUROC in the machine learning 
+    Mathematically, the beta distribution is unrelated to AUROC in the machine learning
     context. It is used here as a simple, closed-form function with attractive properties
     for generating an AUC curve, such as being continuous, monotonic, bounded between 0 and 1,
-    and easily parameterized. 
+    and easily parameterized.
 
     Args:
         auc (float): Target area under the curve (expected value of Beta distribution)
@@ -26,19 +27,22 @@ def _derive_params(auc:float, sum_control:float) -> tuple[float,float]:
     if auc > 1 or auc < 0:
         raise ValueError(f"Invalid AUC of {auc} provided. Must be between 0 and 1.")
     if sum_control < 0:
-        raise ValueError(f"Invalid `sum_control` of {sum_control} provided. Must be positive.")
+        raise ValueError(
+            f"Invalid `sum_control` of {sum_control} provided. Must be positive."
+        )
 
     b = auc * sum_control
     a = sum_control - b
-    return (a, b) 
+    return (a, b)
 
-def _gen_roc(a:float, b:float, n_bin:int = 25) -> pl.DataFrame:
+
+def _gen_roc(a: float, b: float, n_bin: int = 25) -> pl.DataFrame:
 
     if a < 0 or b < 0:
-        raise ValueError (f"Invalid Beta parameters ({a},{b}). Must be positive.")
+        raise ValueError(f"Invalid Beta parameters ({a},{b}). Must be positive.")
     if n_bin < 1:
         raise ValueError(f"Invalid `n_bin` of {n_bin}. Must be at least 1.")
-    fpr = np.linspace(0,1,n_bin)
-    tpr = beta(a,b).cdf(fpr)
-    df_roc = pl.DataFrame({'fpr':fpr,'tpr':tpr})
+    fpr = np.linspace(0, 1, n_bin)
+    tpr = beta(a, b).cdf(fpr)
+    df_roc = pl.DataFrame({"fpr": fpr, "tpr": tpr})
     return df_roc
