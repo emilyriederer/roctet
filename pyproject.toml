@@ -1,7 +1,7 @@
 [project]
 name = "quroctet"
 version = "0.1.0"
-description = "Add your description here"
+description = "Generate diverse score-target datasets with the same AUROC value, ala Anscombe's Quartet"
 readme = "README.md"
 authors = [
     { name = "Emily Riederer", email = "emilyriederer@gmail.com" }
