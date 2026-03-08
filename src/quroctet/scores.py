@@ -70,14 +70,3 @@ def _gen_scorebins_to_scores(
             )
         )
     return df_scores.explode('score','target')
-
-# TODO: Can I delete this one? 
-def roc_to_scores(
-  df_roc:pl.DataFrame,
-  n_neg:int,
-  n_pos:int
-) -> pl.DataFrame:
-
-    df_scorebins = _gen_roc_to_scorebins(df_roc,n_neg,n_pos)
-    df_scores    = _gen_scorebins_to_scores(df_scorebins)
-    return df_scores
