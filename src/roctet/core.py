@@ -1,6 +1,6 @@
 import polars as pl
 import numpy as np
-from quroctet import curves, scores
+from roctet import curves, scores
 
 def calc_roctet(auroc:float, n_sets:int=4, n_obsv:int=100_000) -> list[pl.DataFrame]:
     """For a given AUC, returns specified number of prediction sets with

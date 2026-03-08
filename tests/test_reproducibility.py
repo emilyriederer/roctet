@@ -1,6 +1,6 @@
 import polars as pl
 import numpy as np
-from quroctet.scores import (
+from roctet.scores import (
     _gen_roc_to_scorebins,
     _gen_scorebins_to_scores,
 )

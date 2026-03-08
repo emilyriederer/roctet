@@ -1,10 +1,10 @@
 import polars as pl
-from quroctet.core import calc_roctet
-from quroctet.utils import auroc
+from roctet.core import calc_roctet
+from roctet.utils import auroc
 
 
 def test_calc_roctet_integration():
-    
+
     target_auc = 0.7
     dfs = calc_roctet(target_auc, n_sets=2, n_obsv=2000)
     assert isinstance(dfs, list)

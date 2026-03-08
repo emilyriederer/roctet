@@ -1,5 +1,5 @@
 import polars as pl
-from quroctet.scores import _gen_roc_to_scorebins, _gen_scorebins_to_scores
+from roctet.scores import _gen_roc_to_scorebins, _gen_scorebins_to_scores
 
 def test_roc_to_scorebins_counts():
     # simple ROC that maps evenly

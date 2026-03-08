@@ -1,5 +1,5 @@
 [project]
-name = "quroctet"
+name = "roctet"
 version = "0.1.0"
 description = "Generate diverse score-target datasets with the same AUROC value, ala Anscombe's Quartet"
 readme = "README.md"

@@ -1,6 +1,6 @@
 import numpy as np
 import polars as pl
-from quroctet.curves import _derive_params, _gen_roc
+from roctet.curves import _derive_params, _gen_roc
 
 
 def test_derive_params_sum_and_ratio():

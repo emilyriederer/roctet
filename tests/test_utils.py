@@ -1,5 +1,5 @@
 import numpy as np
-from quroctet.utils import auroc
+from roctet.utils import auroc
 
 def test_auroc_basic():
     y_true = np.array([0, 0, 1, 1])
