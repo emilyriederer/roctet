@@ -1,6 +1,6 @@
 import polars as pl
 import numpy as np
-from numpy.random import uniform, binomial
+from numpy.random import default_rng
 
 def _gen_roc_to_scorebins(
   df_roc:pl.DataFrame,
@@ -17,7 +17,7 @@ def _gen_roc_to_scorebins(
         .with_columns(
             score_max = pl.col('fpr').rank('ordinal', descending = True) / (pl.col('fpr').len() - 1),
             cum_n_neg = pl.col('fpr').mul(n_neg).round(0).cast(pl.Int64),
-            cum_n_pos = pl.col('tpr').mul(n_neg).round(0).cast(pl.Int64),
+            cum_n_pos = pl.col('tpr').mul(n_pos).round(0).cast(pl.Int64),
         )
         .with_columns(
             score_min = pl.col('score_max').shift(-1).fill_null(0),
@@ -32,7 +32,8 @@ def _gen_roc_to_scorebins(
     return df_scorebins
 
 def _gen_scorebins_to_scores(
-    df_scorebins: pl.DataFrame
+    df_scorebins: pl.DataFrame,
+    seed:int = 123
 ) -> pl.DataFrame:
 
     # TODO: validation df_scorebins, seeds
@@ -45,18 +46,20 @@ def _gen_scorebins_to_scores(
         out = np.append(base, xtra)
         return out
 
+    rng = default_rng(seed)
+
     df_scores = (
         df_scorebins
         .with_columns(
             score = pl.struct('score_min','score_max','n').map_elements(
                 function = lambda z: sorted(
-                                        uniform(low = z['score_min'],
+                                        rng.uniform(low = z['score_min'],
                                                 high = z['score_max'],
                                                 size = z['n']).tolist()),
                 return_dtype = pl.List(pl.Float64)
             ),
             target = pl.struct('n','n_pos').map_elements(
-                function = lambda z: binomial(n = 1,
+                function = lambda z: rng.binomial(n = 1,
                                               p = z['n_pos'] / z['n'],
                                               size = z['n']).tolist(),
                 return_dtype = pl.List(pl.Int64)

@@ -22,12 +22,22 @@ def _derive_params(auc:float, sum_control:float) -> tuple[float,float]:
     Returns:
         tuple[float,float]: Contains values of alpha and beta
     """
+
+    if auc > 1 or auc < 0:
+        raise ValueError(f"Invalid AUC of {auc} provided. Must be between 0 and 1.")
+    if sum_control < 0:
+        raise ValueError(f"Invalid `sum_control` of {sum_control} provided. Must be positive.")
+
     b = auc * sum_control
     a = sum_control - b
     return (a, b) 
 
-def _gen_roc(a, b, n_bin = 25) -> pl.DataFrame:
+def _gen_roc(a:float, b:float, n_bin:int = 25) -> pl.DataFrame:
 
+    if a < 0 or b < 0:
+        raise ValueError (f"Invalid Beta parameters ({a},{b}). Must be positive.")
+    if n_bin < 1:
+        raise ValueError(f"Invalid `n_bin` of {n_bin}. Must be at least 1.")
     fpr = np.linspace(0,1,n_bin)
     tpr = beta(a,b).cdf(fpr)
     df_roc = pl.DataFrame({'fpr':fpr,'tpr':tpr})
