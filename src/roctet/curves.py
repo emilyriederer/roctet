@@ -37,9 +37,23 @@ def _derive_params(auc: float, sum_control: float) -> tuple[float, float]:
 
 
 def _gen_roc(a: float, b: float, n_bin: int = 25) -> pl.DataFrame:
+    """Create dataset with points on the ROC curve (parameterized as Beta CDF)
+
+    Args:
+        a (float): Alpha parameter of Beta distribution
+        b (float): Beta parameter of the Beta distribution
+        n_bin (int, optional): Number of points to output. Defaults to 25.
+
+    Raises:
+        ValueError: Negative values for alpha or beta parameters
+        ValueError: Insufficient (<1) values for bins to be produced
+
+    Returns:
+        pl.DataFrame: Dataframe with points representing ROC curve as (`fpr`,`tpr`)
+    """
 
     if a < 0 or b < 0:
-        raise ValueError(f"Invalid Beta parameters ({a},{b}). Must be positive.")
+        raise ValueError(f"Invalid Beta distributino parameters ({a},{b}). Must be positive.")
     if n_bin < 1:
         raise ValueError(f"Invalid `n_bin` of {n_bin}. Must be at least 1.")
     fpr = np.linspace(0, 1, n_bin)

@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Test, Lint and Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.12, 3.13, 3.14]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Install test / lint / build tools
+        run: |
+          python -m pip install pytest ruff mypy build
+
+      - name: Install package (editable)
+        run: |
+          python -m pip install -e .
+
+      - name: Run linters
+        run: |
+          ruff check .
+          mypy roctet || true
+
+      - name: Run tests
+        run: |
+          pytest -q
+
+      - name: Build distributions (single-run)
+        if: matrix.python-version == '3.14'
+        run: |
+          python -m pip install "uv_build>=0.9.24,<0.10.0"
+          uv build

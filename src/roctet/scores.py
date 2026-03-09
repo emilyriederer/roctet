@@ -2,8 +2,17 @@ import polars as pl
 import numpy as np
 from numpy.random import default_rng
 
-
 def _gen_roc_to_scorebins(df_roc: pl.DataFrame, n_neg: int, n_pos: int) -> pl.DataFrame:
+    """Derive score bins and frequencies of true positives and true negatives
+
+    Args:
+        df_roc (pl.DataFrame): ROC curve characterized as dataset with (`fpr`,`tpr`) pairs
+        n_neg (int): Global number of true negatives in target dataset
+        n_pos (int): Global number of true positives in target dataset
+
+    Returns:
+        pl.DataFrame: Dataset containing (`score_min`,`score_max`,`n_pos`,`n_neg`,`n`)
+    """
 
     # TODO: Validate df_roc
 
@@ -29,11 +38,16 @@ def _gen_roc_to_scorebins(df_roc: pl.DataFrame, n_neg: int, n_pos: int) -> pl.Da
     return df_scorebins
 
 
-def _gen_scorebins_to_scores(
-    df_scorebins: pl.DataFrame, seed: int = 123
-) -> pl.DataFrame:
+def _gen_scorebins_to_scores(df_scorebins: pl.DataFrame, seed: int = 123) -> pl.DataFrame:
+    """Generate score-level dataset from scorebins
 
-    # TODO: validation df_scorebins, seeds
+    Args:
+        df_scorebins (pl.DataFrame): Scorebin data as returned by `_gen_roc_to_scorebins()`
+        seed (int, optional): Random seed for binomial and uniform sampling. Defaults to 123.
+
+    Returns:
+        pl.DataFrame: Dataset containing `score` and `target` for each sample observation
+    """
 
     def _gen_scores_arr(n_pos: int, n_neg: int) -> np.ndarray:
 
@@ -47,11 +61,9 @@ def _gen_scorebins_to_scores(
 
     df_scores = df_scorebins.with_columns(
         score=pl.struct("score_min", "score_max", "n").map_elements(
-            function=lambda z: sorted(
-                rng.uniform(
+            function=lambda z: rng.uniform(
                     low=z["score_min"], high=z["score_max"], size=z["n"]
-                ).tolist()
-            ),
+                ).tolist(),
             return_dtype=pl.List(pl.Float64),
         ),
         target=pl.struct("n", "n_pos").map_elements(
@@ -59,9 +71,6 @@ def _gen_scorebins_to_scores(
                 n=1, p=z["n_pos"] / z["n"], size=z["n"]
             ).tolist(),
             return_dtype=pl.List(pl.Int64),
-        ),
-        # target = pl.struct('n_neg','n_pos').map_elements(
-        #    function = lambda d: _gen_scores_arr(d['n_pos'],d['n_neg']),
-        #    return_dtype = pl.List(pl.Int64))
+        )
     )
     return df_scores.explode("score", "target")

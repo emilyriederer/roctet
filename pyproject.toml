@@ -2,11 +2,14 @@
 name = "roctet"
 version = "0.1.0"
 description = "Generate diverse score-target datasets with the same AUROC value, ala Anscombe's Quartet"
+keywords = ["auroc","auc","evaluation","Anscombe"]
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Emily Riederer", email = "emilyriederer@gmail.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.4.2",
     "polars>=1.38.1",
@@ -23,3 +26,16 @@ dev = [
     "pyarrow>=23.0.1",
     "pytest>=9.0.2",
 ]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering"
+    ]
+
+[project.urls] 
+"Source" = "https://github.com/emilyriederer/roctet/"
