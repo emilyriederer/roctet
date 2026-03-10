@@ -57,20 +57,30 @@ def _gen_scorebins_to_scores(df_scorebins: pl.DataFrame, seed: int = 123) -> pl.
         out = np.append(base, xtra)
         return out
 
-    rng = default_rng(seed)
+    # Add a stable row index so we can create a per-row RNG seeded
+    # deterministically from the provided seed. This avoids nondeterminism
+    # when Polars may execute `map_elements` in parallel or in a different
+    # order, which would otherwise advance a single RNG in a nondeterministic
+    # way.
+    df_scorebins = df_scorebins.with_row_index("_row_idx")
+
+    def _score_fn(z):
+        r = default_rng(int(seed) + int(z["_row_idx"]))
+        return r.uniform(low=z["score_min"], high=z["score_max"], size=z["n"]).tolist()
+
+    def _target_fn(z):
+        # use a different stream offset for targets to avoid correlation
+        r = default_rng(int(seed) + int(z["_row_idx"]) + 1)
+        return r.binomial(n=1, p=z["n_pos"] / z["n"], size=z["n"]).tolist()
 
     df_scores = df_scorebins.with_columns(
-        score=pl.struct("score_min", "score_max", "n").map_elements(
-            function=lambda z: rng.uniform(
-                    low=z["score_min"], high=z["score_max"], size=z["n"]
-                ).tolist(),
+        score=pl.struct("score_min", "score_max", "n", "_row_idx").map_elements(
+            function=_score_fn,
             return_dtype=pl.List(pl.Float64),
         ),
-        target=pl.struct("n", "n_pos").map_elements(
-            function=lambda z: rng.binomial(
-                n=1, p=z["n_pos"] / z["n"], size=z["n"]
-            ).tolist(),
+        target=pl.struct("n", "n_pos", "_row_idx").map_elements(
+            function=_target_fn,
             return_dtype=pl.List(pl.Int64),
-        )
+        ),
     )
     return df_scores.explode("score", "target")
