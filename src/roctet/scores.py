@@ -49,19 +49,8 @@ def _gen_scorebins_to_scores(df_scorebins: pl.DataFrame, seed: int = 123) -> pl.
         pl.DataFrame: Dataset containing `score` and `target` for each sample observation
     """
 
-    def _gen_scores_arr(n_pos: int, n_neg: int) -> np.ndarray:
-
-        more = 1 if n_pos >= n_neg else 0
-        xtra = np.repeat(more, abs(n_pos - n_neg))
-        base = np.tile([0, 1], min(n_pos, n_neg))
-        out = np.append(base, xtra)
-        return out
-
-    # Add a stable row index so we can create a per-row RNG seeded
-    # deterministically from the provided seed. This avoids nondeterminism
-    # when Polars may execute `map_elements` in parallel or in a different
-    # order, which would otherwise advance a single RNG in a nondeterministic
-    # way.
+    # add a stable row index for per-row RNG seed
+    # this avoids nondeterminism when `polars` executes `map_elements` out of order
     df_scorebins = df_scorebins.with_row_index("_row_idx")
 
     def _score_fn(z):
@@ -69,7 +58,6 @@ def _gen_scorebins_to_scores(df_scorebins: pl.DataFrame, seed: int = 123) -> pl.
         return r.uniform(low=z["score_min"], high=z["score_max"], size=z["n"]).tolist()
 
     def _target_fn(z):
-        # use a different stream offset for targets to avoid correlation
         r = default_rng(int(seed) + int(z["_row_idx"]) + 1)
         return r.binomial(n=1, p=z["n_pos"] / z["n"], size=z["n"]).tolist()
 
