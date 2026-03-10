@@ -30,7 +30,7 @@ jobs:
 
       - name: Install test / lint / build tools
         run: |
-          python -m pip install pytest ruff mypy build
+          python -m pip install uv pytest ruff mypy build
 
       - name: Install package (editable)
         run: |
