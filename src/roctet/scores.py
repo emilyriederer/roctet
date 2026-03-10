@@ -1,5 +1,4 @@
 import polars as pl
-import numpy as np
 from numpy.random import default_rng
 
 def _gen_roc_to_scorebins(df_roc: pl.DataFrame, n_neg: int, n_pos: int) -> pl.DataFrame:
