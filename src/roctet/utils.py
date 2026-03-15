@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.stats import rankdata
 
-
 def auroc(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute AUC using Mann-Whitney U Statistics
 
@@ -26,3 +25,4 @@ def auroc(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     auc = (rank_sum_pos - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
 
     return round(auc.item(), 4)
+    

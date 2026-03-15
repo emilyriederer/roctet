@@ -14,7 +14,7 @@ class CurveShaper(ABC):
     curve as a `polars.DataFrame` with columns `fpr` and `tpr`.
 
     Responsibilities of subclasses:
-    - implement `get_control_range(auroc)` (staticmethod) which returns the
+    - implement `control_range()` (property) which returns the
       allowable range for the `control` parameter given a target `auroc`.
     - implement `derive_params()` to compute the internal parameters that
       fully describe the underlying shape for the chosen parameterization.
@@ -22,34 +22,53 @@ class CurveShaper(ABC):
       as a `polars.DataFrame` with `fpr` and `tpr` columns.
 
     Args:
-        auroc (float): Target area under the ROC curve. Must be in [0, 1].
-        control (float): Shape control parameter. Valid range depends on the
-            concrete subclass and should be validated by calling
-            `get_control_range(auroc)`.
+        auroc (float): Target area under the ROC curve. Must be in (0, 1).
+        control_transform (Callable[[float], float]): Function to transform control parameter.
     """
 
-    def __init__(self, auroc: float) -> None:
-        if auroc > 1 or auroc < 0:
+    def __init__(self, auroc: float, control_transform: Callable[[float], float]) -> None:
+        if auroc >= 1 or auroc <= 0:
             raise ValueError(f"Invalid `auroc` ({auroc}). Must be in (0,1).")
         self.auroc = auroc
-        range = self.get_control_range()
-        self.control = (range[0]+range[1]) / 2
+        self.control_transform = control_transform
+        control_range = self.control_range
+        self.control = (control_range[0]+control_range[1]) / 2
+
+    def _validate_control(self, control: float) -> float:
+        """Internal helper to confirm user-provided control or revert to class default
+
+        Args:
+            control (float): User-provided input value for control 
+
+        Raises:
+            ValueError: Triggered on invalid control values based on AUC and curve-imposed constraints
+
+        Returns:
+            float: The control value to use for downstream processing
+        """
+        if control is None:
+            return self.control
+        control_range = self.control_range
+        if control < control_range[0] or control > control_range[1]:
+            raise ValueError(f"Invalid `control` ({control}). Must be in {control_range}")
+        return control 
 
     @property
     @abstractmethod
-    def get_control_range() -> tuple[float, float]:
-        """Return (min, max) allowable `control` values for the given `auroc`."""
+    def control_gen_range(self) -> tuple[float, float]:
+        """Return (min, max) allowable pre-transformation `control` values for the given `auroc`."""
 
-    @staticmethod
-    @abstractmethod
-    def get_control_transform() -> Callable[[str], bool]:
-        """Returns function that transforms the range of the control."""
+    @property
+    def control_range(self) -> tuple[float, float]:
+        """Return (min, max) allowable `control` values for the given `auroc`."""
+        crg = self.control_gen_range
+        return (self.control_transform(crg[0]), self.control_transform(crg[1]))
 
     @abstractmethod
     def derive_params(self, control: float = None) -> dict[str, float]:
         """Derive internal parameters from `auroc` and `control`.
 
-        Returns a tuple of floats representing the parameters that uniquely
+        Returns a dict of floats representing the parameters that uniquely
         specify the curve shape for the concrete parameterization.
         """
 
@@ -64,9 +83,9 @@ class CurveShaper(ABC):
 
     def gen_rocs(self, n_bin: int, n_sets: int) -> list[pl.DataFrame]:
 
-        control_rng = self.get_control_range()
-        control_trn = self.__class__.get_control_transform()
-        controls = [control_trn(x) for x in np.linspace(control_rng[0],control_rng[1],n_sets)]
+        cgr = self.control_gen_range
+        control_trn = self.control_transform
+        controls = [control_trn(x) for x in np.linspace(cgr[0],cgr[1],n_sets)]
         curves = [self.gen_roc(n_bin, c) for c in controls]
         return curves
 
@@ -86,26 +105,23 @@ class CurveBeta(CurveShaper):
     """
 
     def __init__(self, auroc: float) -> None:
-        super().__init__(auroc)
+        super().__init__(auroc, lambda x: 2**x)
 
-    def get_control_range(auroc: float | None = None) -> tuple[float, float]:
+    @property
+    def control_gen_range(self) -> tuple[float, float]:
         """Return allowed range for `control` for the beta parameterization.
 
         This is a simple heuristic range used by the original implementation.
         """
         return (-1,6)
 
-    def get_control_transform() -> Callable[[float], float]:
-        """Returns function that transforms the range of the control."""
-        return lambda x: 2**x
-
     def derive_params(self, control: float = None) -> dict[str, float]:
         """Derive Beta distribution parameters `(a, b)`.
 
         Returns:
-            tuple[float, float]: `(alpha, beta)` parameters for the Beta CDF.
+            dict[str, float]: `(alpha, beta)` parameters for the Beta CDF.
         """
-        control = control or self.control
+        control = self._validate_control(control)
         b = self.auroc * control
         a = control - b
         return {'a': a, 'b': b}
@@ -122,7 +138,7 @@ class CurveBeta(CurveShaper):
         Returns:
             polars.DataFrame: DataFrame with columns `fpr` and `tpr`.
         """
-        control = control or self.control
+        control = self._validate_control(control)
         params = self.derive_params(control)
         a,b = params.values()
         if n_bin < 1:
@@ -149,9 +165,10 @@ class CurvePiecewise(CurveShaper):
     """
 
     def __init__(self, auroc: float) -> None:
-        super().__init__(auroc)
+        super().__init__(auroc, lambda x:x)
 
-    def get_control_range(self) -> tuple[float, float]:
+    @property
+    def control_gen_range(self) -> tuple[float, float]:
         """Return allowable `control` range for the piecewise parameterization.
 
         The heuristic enforces a small epsilon away from 0 and 1 and ensures the
@@ -161,18 +178,14 @@ class CurvePiecewise(CurveShaper):
         control_max = min(0.99,2-2*self.auroc)
         return (control_min, control_max)
 
-    def get_control_transform() -> Callable[[float], float]:
-        """Returns function that transforms the range of the control."""
-        return lambda x: x
-
     def derive_params(self, control: float = None) -> dict[str, float]:
         """Derive the inflection point `(x, y)` for the trapezoid curve.
 
         Returns:
-            tuple[float, float]: `(x, y)` where `x` is the inflection x-coordinate
+            dict[str, float]: `(x, y)` where `x` is the inflection x-coordinate
             (distance along the x axis) and `y` is the corresponding height.
         """
-        control = control or self.control
+        control = self._validate_control(control)
         x = control
         y = 2*self.auroc + x - 1
         return {'x': x, 'y': y}
@@ -184,12 +197,12 @@ class CurvePiecewise(CurveShaper):
             n_bin (int): Number of points to output. Must be >= 1.
 
         Raises:
-            ValueError: If `a` or `b` are out of [0,1] or if `n_bin < 1`.
+            ValueError: If `n_bin < 1`.
 
         Returns:
             polars.DataFrame: DataFrame with `fpr` and `tpr`.
         """
-        control = control or self.control
+        control = self._validate_control(control)
         params = self.derive_params(control)
         x,y = params.values()
         if n_bin < 1:
