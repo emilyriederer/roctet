@@ -11,22 +11,41 @@ Returned datasets may be useful for teaching purposes or testing the relationshi
 
 ### Methodology
 
-`roctet` generates a dataset in two steps:
+`roctet` creates ROC curves with a fixed AUC using either of two parameterization: Beta or Piecewise. 
 
-1. Based on an AUROC and control parameters, derive a representative ROC curve
-2. Assuming a balanced event rate, back out the implied correct and incorrect predictions implied by the ROC curve.
-3. Repeat step (2) while varying the control parameters in step (1)
+After creating an ROC curve, the same methodology is used to map back from the ROC scores to simulated prediction / target pairs. 
 
-Step (1) is accomplished by using the CDF of the Beta(a,b) distribution since, like an ROC curve, this is a continuous and monotonic function with a domain and range between 0 and 1. 
-The AUC for a CDF represents the expected value. Thus, `AUC = b / (a+b) = (b/a) / (1 + b/a) = r / (1 + r)` where `r = b/a`. 
-That is, all curves parameterizes the correct ratio of a and b can recover the desired AUC. 
-However, changes in magnitudes of a and b control the spread of the distribution, so varying these can result in curves with materially different shapes. 
+#### Beta
 
-Step (2) is accomplished by mapping the CDF into a table of (FPR,TPR) pairs. For each pair, we can calculate the cumulative number of positives and negatives captured as `Cumulate-to-Bin Negatives/Positives Captured = FPR * Total Negatives/Positives Captured`. Bin-wise positive and negatives are calcualted as a lagged difference, and randomly assigned scores within each bin. 
+The ROC curve is simulated with the CDF of the `Beta(a,b)` distribution. While there is no theoretical link between Beta distributions and AUROC, the Beta CDF has many convenient properties for simulating AUROC:
 
-This doesn't necessarily make the most realistic shapes of pathological AUC curves but succeeds in allowing for a large number of different curves. 
+- it is continuous, monotonic, and concave
+- has a domain and range between 0 and 1
+- has a closed-form AUC characterized solely by the ratio of parameters `r = b/a`
+- can deliver a range of shapes controlled with `b+a`
 
-## Usage
+For a given AUROC and control (`b+a`), `roctet` solves for the parameters of the Beta distribution and treats the resulting CDF as the ROC curve. This creates a slightly atypical ROC shape at the extremes, but is sufficient for a toy example.
+
+#### Piecewise Linear
+
+The ROC curve is simulated as a piecewise linear function with a single inflection point at `(x,y)`. That is, the ROC curve is defined by:
+
+- `tpr = (y/x) * fpr` for `fpr < x`
+- `tpr = y + ((y-tpr)/(x-fpr)) * (fpr - x)` for `fpr >= x`
+
+This creates an ROC curve with an atypical "sharp bend" but, once again, is sufficient for a toy example. 
+
+#### Score Derivation
+
+Given a ROC curve, curves are derive in three steps:
+
+- Simulate a set of `(fpr,tpr)` points on the ROC curve
+- Calculate the implied number of True Positives and True Negatives in each score "band" 
+- Randomly generate scores and assign target values within each bin
+
+Precision of matching AUCs is controlled by the sample size and number of bins used.
+
+### Usage
 
 To get started, jump in to generate some datasets: 
 
