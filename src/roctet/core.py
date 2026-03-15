@@ -27,7 +27,7 @@ def calc_roctet(
     curve_classes = {"piecewise": CurvePiecewise, "beta": CurveBeta}
     curve_cls = curve_classes.get(method)
     obj = curve_cls(auroc)
-    dfs_roc = obj.gen_rocs(1000, 10)
+    dfs_roc = obj.gen_rocs(1000, n_sets)
     dfs_sc =  [calc_scores_from_roc(d, n_neg, n_pos) for d in dfs_roc]
 
     return dfs_sc
