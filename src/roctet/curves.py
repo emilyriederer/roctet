@@ -4,6 +4,7 @@ import numpy as np
 import polars as pl
 from scipy.stats import beta
 
+
 class CurveShaper(ABC):
     """
     Abstract base class for ROC-curve shapers.
@@ -26,19 +27,21 @@ class CurveShaper(ABC):
         control_transform (Callable[[float], float]): Function to transform control parameter.
     """
 
-    def __init__(self, auroc: float, control_transform: Callable[[float], float]) -> None:
+    def __init__(
+        self, auroc: float, control_transform: Callable[[float], float]
+    ) -> None:
         if auroc >= 1 or auroc <= 0:
             raise ValueError(f"Invalid `auroc` ({auroc}). Must be in (0,1).")
         self.auroc = auroc
         self.control_transform = control_transform
         control_range = self.control_range
-        self.control = (control_range[0]+control_range[1]) / 2
+        self.control = (control_range[0] + control_range[1]) / 2
 
     def _validate_control(self, control: float) -> float:
         """Internal helper to confirm user-provided control or revert to class default
 
         Args:
-            control (float): User-provided input value for control 
+            control (float): User-provided input value for control
 
         Raises:
             ValueError: Triggered on invalid control values based on AUC and curve-imposed constraints
@@ -50,8 +53,10 @@ class CurveShaper(ABC):
             return self.control
         control_range = self.control_range
         if control < control_range[0] or control > control_range[1]:
-            raise ValueError(f"Invalid `control` ({control}). Must be in {control_range}")
-        return control 
+            raise ValueError(
+                f"Invalid `control` ({control}). Must be in {control_range}"
+            )
+        return control
 
     @property
     @abstractmethod
@@ -85,9 +90,10 @@ class CurveShaper(ABC):
 
         cgr = self.control_gen_range
         control_trn = self.control_transform
-        controls = [control_trn(x) for x in np.linspace(cgr[0],cgr[1],n_sets)]
+        controls = [control_trn(x) for x in np.linspace(cgr[0], cgr[1], n_sets)]
         curves = [self.gen_roc(n_bin, c) for c in controls]
         return curves
+
 
 class CurveBeta(CurveShaper):
     """
@@ -113,7 +119,7 @@ class CurveBeta(CurveShaper):
 
         This is a simple heuristic range used by the original implementation.
         """
-        return (-1,6)
+        return (-1, 6)
 
     def derive_params(self, control: float = None) -> dict[str, float]:
         """Derive Beta distribution parameters `(a, b)`.
@@ -124,7 +130,7 @@ class CurveBeta(CurveShaper):
         control = self._validate_control(control)
         b = self.auroc * control
         a = control - b
-        return {'a': a, 'b': b}
+        return {"a": a, "b": b}
 
     def gen_roc(self, n_bin: int, control: float = None) -> pl.DataFrame:
         """Create dataset with points on the ROC curve (Beta CDF).
@@ -140,7 +146,7 @@ class CurveBeta(CurveShaper):
         """
         control = self._validate_control(control)
         params = self.derive_params(control)
-        a,b = params.values()
+        a, b = params.values()
         if n_bin < 1:
             raise ValueError(f"Invalid `n_bin` of {n_bin}. Must be at least 1.")
         fpr = np.linspace(0, 1, n_bin)
@@ -165,7 +171,7 @@ class CurvePiecewise(CurveShaper):
     """
 
     def __init__(self, auroc: float) -> None:
-        super().__init__(auroc, lambda x:x)
+        super().__init__(auroc, lambda x: x)
 
     @property
     def control_gen_range(self) -> tuple[float, float]:
@@ -174,8 +180,8 @@ class CurvePiecewise(CurveShaper):
         The heuristic enforces a small epsilon away from 0 and 1 and ensures the
         trapezoid can achieve the requested `auroc`.
         """
-        control_min = max(0.01,1-2*self.auroc)
-        control_max = min(0.99,2-2*self.auroc)
+        control_min = max(0.01, 1 - 2 * self.auroc)
+        control_max = min(0.99, 2 - 2 * self.auroc)
         return (control_min, control_max)
 
     def derive_params(self, control: float = None) -> dict[str, float]:
@@ -187,8 +193,8 @@ class CurvePiecewise(CurveShaper):
         """
         control = self._validate_control(control)
         x = control
-        y = 2*self.auroc + x - 1
-        return {'x': x, 'y': y}
+        y = 2 * self.auroc + x - 1
+        return {"x": x, "y": y}
 
     def gen_roc(self, n_bin: int, control: float = None) -> pl.DataFrame:
         """Create dataset with points on the ROC curve (linear interpolation).
@@ -204,10 +210,10 @@ class CurvePiecewise(CurveShaper):
         """
         control = self._validate_control(control)
         params = self.derive_params(control)
-        x,y = params.values()
+        x, y = params.values()
         if n_bin < 1:
             raise ValueError(f"Invalid `n_bin` of {n_bin}. Must be at least 1.")
         fpr = np.linspace(0, 1, n_bin)
-        tpr = np.where(fpr < x, (y/x)*fpr, y+(1-y)*(fpr-x)/(1-x)) 
+        tpr = np.where(fpr < x, (y / x) * fpr, y + (1 - y) * (fpr - x) / (1 - x))
         df_roc = pl.DataFrame({"fpr": fpr, "tpr": tpr})
         return df_roc

@@ -96,4 +96,3 @@ def test_curve_piecewise_derive_params_relationship():
 
     assert np.isclose(x, control)
     assert np.isclose(y, 2 * auc + x - 1)
-

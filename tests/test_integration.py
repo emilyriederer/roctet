@@ -11,6 +11,6 @@ def test_calc_roctet_integration():
     assert len(dfs) == 2
     for d in dfs:
         assert isinstance(d, pl.DataFrame)
-        assert set(['score', 'target']).issubset(set(d.columns))
-        computed = auroc(d['target'].to_numpy(), d['score'].to_numpy())
+        assert set(["score", "target"]).issubset(set(d.columns))
+        computed = auroc(d["target"].to_numpy(), d["score"].to_numpy())
         assert abs(computed - target_auc) < 0.05

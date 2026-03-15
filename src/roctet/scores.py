@@ -1,7 +1,10 @@
 import polars as pl
 from numpy.random import default_rng
 
-def calc_scores_from_roc(df_roc: pl.DataFrame, n_neg: int, n_pos: int, seed: int = 123) -> pl.DataFrame:
+
+def calc_scores_from_roc(
+    df_roc: pl.DataFrame, n_neg: int, n_pos: int, seed: int = 123
+) -> pl.DataFrame:
     """_summary_
 
     Args:
@@ -17,6 +20,7 @@ def calc_scores_from_roc(df_roc: pl.DataFrame, n_neg: int, n_pos: int, seed: int
     df_scorebins = _gen_roc_to_scorebins(df_roc, n_neg, n_pos)
     df_scores = _gen_scorebins_to_scores(df_scorebins)
     return df_scores
+
 
 def _gen_roc_to_scorebins(df_roc: pl.DataFrame, n_neg: int, n_pos: int) -> pl.DataFrame:
     """Derive score bins and frequencies of true positives and true negatives
@@ -52,7 +56,9 @@ def _gen_roc_to_scorebins(df_roc: pl.DataFrame, n_neg: int, n_pos: int) -> pl.Da
     return df_scorebins
 
 
-def _gen_scorebins_to_scores(df_scorebins: pl.DataFrame, seed: int = 123) -> pl.DataFrame:
+def _gen_scorebins_to_scores(
+    df_scorebins: pl.DataFrame, seed: int = 123
+) -> pl.DataFrame:
     """Generate score-level dataset from scorebins
 
     Args:
@@ -76,16 +82,15 @@ def _gen_scorebins_to_scores(df_scorebins: pl.DataFrame, seed: int = 123) -> pl.
         return r.binomial(n=1, p=z["n_pos"] / z["n"], size=z["n"]).tolist()
 
     df_scores = (
-        df_scorebins
-        .with_columns(
-        score=pl.struct("score_min", "score_max", "n", "_row_idx").map_elements(
-            function=_score_fn,
-            return_dtype=pl.List(pl.Float64),
-        ),
-        target=pl.struct("n", "n_pos", "_row_idx").map_elements(
-            function=_target_fn,
-            return_dtype=pl.List(pl.Int64),
-        ),
+        df_scorebins.with_columns(
+            score=pl.struct("score_min", "score_max", "n", "_row_idx").map_elements(
+                function=_score_fn,
+                return_dtype=pl.List(pl.Float64),
+            ),
+            target=pl.struct("n", "n_pos", "_row_idx").map_elements(
+                function=_target_fn,
+                return_dtype=pl.List(pl.Int64),
+            ),
         )
         .explode("score", "target")
         .select("score", "target")
