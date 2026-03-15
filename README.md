@@ -24,6 +24,8 @@ However, changes in magnitudes of a and b control the spread of the distribution
 
 Step (2) is accomplished by mapping the CDF into a table of (FPR,TPR) pairs. For each pair, we can calculate the cumulative number of positives and negatives captured as `Cumulate-to-Bin Negatives/Positives Captured = FPR * Total Negatives/Positives Captured`. Bin-wise positive and negatives are calcualted as a lagged difference, and randomly assigned scores within each bin. 
 
+This doesn't necessarily make the most realistic shapes of pathological AUC curves but succeeds in allowing for a large number of different curves. 
+
 ## Usage
 
 To get started, jump in to generate some datasets: 

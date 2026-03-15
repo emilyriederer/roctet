@@ -1,6 +1,23 @@
 import polars as pl
 from numpy.random import default_rng
 
+def calc_scores_from_roc(df_roc: pl.DataFrame, n_neg: int, n_pos: int, seed: int = 123) -> pl.DataFrame:
+    """_summary_
+
+    Args:
+        df_roc (pl.DataFrame): ROC curve characterized as dataset with (`fpr`,`tpr`) pairs
+        n_neg (int): Global number of true negatives in target dataset
+        n_pos (int): Global number of true positives in target dataset
+        seed (int, optional): Random seed for binomial and uniform sampling. Defaults to 123.
+
+    Returns:
+        pl.DataFrame: Dataset containing `score` and `target` for each sample observation
+    """
+
+    df_scorebins = _gen_roc_to_scorebins(df_roc, n_neg, n_pos)
+    df_scores = _gen_scorebins_to_scores(df_scorebins)
+    return df_scores
+
 def _gen_roc_to_scorebins(df_roc: pl.DataFrame, n_neg: int, n_pos: int) -> pl.DataFrame:
     """Derive score bins and frequencies of true positives and true negatives
 
@@ -12,8 +29,6 @@ def _gen_roc_to_scorebins(df_roc: pl.DataFrame, n_neg: int, n_pos: int) -> pl.Da
     Returns:
         pl.DataFrame: Dataset containing (`score_min`,`score_max`,`n_pos`,`n_neg`,`n`)
     """
-
-    # TODO: Validate df_roc
 
     # derive score bin to observation bin mapping
     df_scorebins = (
@@ -60,7 +75,9 @@ def _gen_scorebins_to_scores(df_scorebins: pl.DataFrame, seed: int = 123) -> pl.
         r = default_rng(int(seed) + int(z["_row_idx"]) + 1)
         return r.binomial(n=1, p=z["n_pos"] / z["n"], size=z["n"]).tolist()
 
-    df_scores = df_scorebins.with_columns(
+    df_scores = (
+        df_scorebins
+        .with_columns(
         score=pl.struct("score_min", "score_max", "n", "_row_idx").map_elements(
             function=_score_fn,
             return_dtype=pl.List(pl.Float64),
@@ -69,5 +86,8 @@ def _gen_scorebins_to_scores(df_scorebins: pl.DataFrame, seed: int = 123) -> pl.
             function=_target_fn,
             return_dtype=pl.List(pl.Int64),
         ),
+        )
+        .explode("score", "target")
+        .select("score", "target")
     )
-    return df_scores.explode("score", "target")
+    return df_scores
