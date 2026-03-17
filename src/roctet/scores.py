@@ -5,7 +5,7 @@ from numpy.random import default_rng
 def calc_scores_from_roc(
     df_roc: pl.DataFrame, n_neg: int, n_pos: int, seed: int = 123
 ) -> pl.DataFrame:
-    """_summary_
+    """Derive observation-level scores and targets from points on the ROC curve
 
     Args:
         df_roc (pl.DataFrame): ROC curve characterized as dataset with (`fpr`,`tpr`) pairs

@@ -1,13 +1,14 @@
 import numpy as np
+import numpy.typing as npt
 from scipy.stats import rankdata
 
 
-def auroc(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+def auroc(y_true: npt.NDArray[np.floating], y_pred: npt.NDArray[np.floating]) -> float:
     """Compute AUC using Mann-Whitney U Statistics
 
     Args:
-        y_true (np.ndarray): Binary 0/1 indicators of true value
-        y_pred (np.ndarray): Scores predicting the binary truth
+        y_true (npt.NDArray[np.floating]): Binary 0/1 indicators of true value
+        y_pred (npt.NDArray[np.floating]): Scores predicting the binary truth
 
     Returns:
         float: AUROC statistics
