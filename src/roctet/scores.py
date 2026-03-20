@@ -1,10 +1,8 @@
 import polars as pl
 import numpy as np
-from numpy.random import default_rng
-
 
 def calc_scores_from_roc(
-    df_roc: pl.DataFrame, n_neg: int, n_pos: int, seed: int = 123
+    df_roc: pl.DataFrame, n_neg: int, n_pos: int
 ) -> pl.DataFrame:
     """Derive observation-level scores and targets from points on the ROC curve
 
@@ -12,7 +10,6 @@ def calc_scores_from_roc(
         df_roc (pl.DataFrame): ROC curve characterized as dataset with (`fpr`,`tpr`) pairs
         n_neg (int): Global number of true negatives in target dataset
         n_pos (int): Global number of true positives in target dataset
-        seed (int, optional): Random seed for binomial and uniform sampling. Defaults to 123.
 
     Returns:
         pl.DataFrame: Dataset containing `score` and `target` for each sample observation
@@ -58,25 +55,19 @@ def _gen_roc_to_scorebins(df_roc: pl.DataFrame, n_neg: int, n_pos: int) -> pl.Da
 
 
 def _gen_scorebins_to_scores(
-    df_scorebins: pl.DataFrame, seed: int = 123
+    df_scorebins: pl.DataFrame
 ) -> pl.DataFrame:
     """Generate score-level dataset from scorebins
 
     Args:
         df_scorebins (pl.DataFrame): Scorebin data as returned by `_gen_roc_to_scorebins()`
-        seed (int, optional): Random seed for binomial and uniform sampling. Defaults to 123.
 
     Returns:
         pl.DataFrame: Dataset containing `score` and `target` for each sample observation
     """
 
-    # add a stable row index for per-row RNG seed
-    # this avoids nondeterminism when `polars` executes `map_elements` out of order
-    df_scorebins = df_scorebins.with_row_index("_row_idx")
-
     def _score_fn(z):
-        r = default_rng(int(seed) + int(z["_row_idx"]))
-        vals = r.uniform(low=z["score_min"], high=z["score_max"], size=z["n"])
+        vals = np.linspace(z["score_min"],z["score_max"],z["n"])
         return np.sort(vals).tolist()
 
     def _target_fn(z):
@@ -90,7 +81,7 @@ def _gen_scorebins_to_scores(
         df_scorebins
         .filter( pl.col('n') > 0)
         .with_columns(
-            score=pl.struct("score_min", "score_max", "n", "_row_idx").map_elements(
+            score=pl.struct("score_min", "score_max", "n").map_elements(
                 function=_score_fn,
                 return_dtype=pl.List(pl.Float64),
             ),
