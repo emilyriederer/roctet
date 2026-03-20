@@ -1,4 +1,5 @@
 import polars as pl
+import numpy as np
 from numpy.random import default_rng
 
 
@@ -75,11 +76,15 @@ def _gen_scorebins_to_scores(
 
     def _score_fn(z):
         r = default_rng(int(seed) + int(z["_row_idx"]))
-        return r.uniform(low=z["score_min"], high=z["score_max"], size=z["n"]).tolist()
+        vals = r.uniform(low=z["score_min"], high=z["score_max"], size=z["n"])
+        return np.sort(vals).tolist()
 
     def _target_fn(z):
-        r = default_rng(int(seed) + int(z["_row_idx"]) + 1)
-        return r.binomial(n=1, p=z["n_pos"] / z["n"], size=z["n"]).tolist()
+        vals = np.append( 
+                    np.repeat(0, z["n_neg"]), 
+                    np.repeat(1, z["n_pos"])
+                        )
+        return np.sort(vals).tolist()
 
     df_scores = (
         df_scorebins
@@ -89,7 +94,7 @@ def _gen_scorebins_to_scores(
                 function=_score_fn,
                 return_dtype=pl.List(pl.Float64),
             ),
-            target=pl.struct("n", "n_pos", "_row_idx").map_elements(
+            target=pl.struct("n_pos", "n_neg").map_elements(
                 function=_target_fn,
                 return_dtype=pl.List(pl.Int64),
             ),
