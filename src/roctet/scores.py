@@ -82,7 +82,9 @@ def _gen_scorebins_to_scores(
         return r.binomial(n=1, p=z["n_pos"] / z["n"], size=z["n"]).tolist()
 
     df_scores = (
-        df_scorebins.with_columns(
+        df_scorebins
+        .filter( pl.col('n') > 0)
+        .with_columns(
             score=pl.struct("score_min", "score_max", "n", "_row_idx").map_elements(
                 function=_score_fn,
                 return_dtype=pl.List(pl.Float64),
