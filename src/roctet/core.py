@@ -13,7 +13,8 @@ def calc_roctet(
     n_obsv: int = 100_000,
     event_rate: float = 0.5
 ) -> list[pl.DataFrame]:
-    """For a given AUC, returns specified number of prediction sets with
+    """
+    For a given AUC, returns specified number of prediction sets with
     distinct ROC curve patterns but similar AUC values.
 
     Args:
