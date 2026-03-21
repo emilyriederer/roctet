@@ -10,3 +10,5 @@ wheels/
 .venv
 .env
 requirements.lowest.txt
+# Great Docs build directory (ephemeral, do not commit)
+great-docs/

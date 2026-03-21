@@ -1,0 +1,151 @@
+---
+title: Basic Demo
+jupyter: python3
+---
+
+```{python}
+from roctet import calc_roctet
+from roctet.utils import auroc
+from numpy import arange
+import polars as pl
+import polars.selectors as cs
+import polars_ds as pds
+from plotnine import (
+    ggplot,
+    aes,
+    geom_line,
+    geom_abline,
+    facet_grid,
+    labs,
+    theme_set,
+    theme_bw,
+    theme,
+)
+```
+
+```{python}
+theme_set(theme_bw())
+```
+
+## Data Generation
+
+To create new datasets with a set AUROC, import and call the `calc_roctet` function.
+This allows you to create any number of distinct ROC curves for a given method ("beta" or "piecewise"). 
+
+Below, we create 8 datasets of 100k observations from each of data generating method.
+All four share an AUC of 0.67. 
+
+Results are returns as a list of `polars` DataFrames. 
+
+```{python}
+# generate datasets
+dfs_beta = calc_roctet(0.67, method="beta", n_sets=4, n_obsv=1e3)  
+dfs_pcws = calc_roctet(0.67, method="piecewise", n_sets=4, n_obsv=1e3)
+dfs_beta[0].glimpse()
+```
+
+```{python}
+# consolidate to one dataset
+df = pl.concat(
+    [d.with_columns(method=pl.lit("beta")) for d in dfs_beta] +
+    [d.with_columns(method=pl.lit("piecewise")) for d in dfs_pcws]
+)
+df.glimpse()
+```
+
+## AUROC Summary
+
+We can confirm that all candidate models have almost matching AUROCs out to at least 3 decimal places. 
+
+```{python}
+# compare AUC values
+aucs = [
+    auroc(d["target"].to_numpy(), d["score"].to_numpy()) for d in dfs_beta + dfs_pcws
+]
+print(aucs)
+print(f"Max Diff: {round(max(aucs) - min(aucs),4)}")
+```
+
+## ROC Curves
+
+Visually inspecting the ROC curves, however, shows that different models have materially different behaviors.
+Some perform better or worse at different regions of the curve. 
+
+```{python}
+# compute and display roc curve
+df_roc = (
+    df.sort("score", descending=True)
+    .with_columns(
+        neg_target=1 - pl.col("target"),
+        neg_target_ttl=(1 - pl.col("target")).sum().over("id", "method"),
+        pos_target=pl.col("target"),
+        pos_target_ttl=pl.col("target").sum().over("id", "method"),
+    )
+    .with_columns(
+        cum_fpr=pl.col("neg_target").cum_sum().over("id", "method")
+        / pl.col("neg_target_ttl"),
+        cum_tpr=pl.col("pos_target").cum_sum().over("id", "method")
+        / pl.col("pos_target_ttl"),
+    )
+)
+
+p = ggplot(df_roc)
+p += aes(x="cum_fpr", y="cum_tpr", color="id", group="id")
+p += geom_abline(intercept=0, slope=1, color="grey", linetype="dashed")
+p += geom_line()
+p += facet_grid(cols="method")
+p += theme(legend_position="none", figure_size=(6,4))
+p += labs(x="FPR", y="TPR")
+p.save("aucs.png")
+p
+```
+
+## Metrics
+
+Similarly, the different datasets show dramatic differences in precision, recall, and other model evaluation metrics.
+
+```{python}
+df_metrics = (
+    df.group_by("method", "id")
+    .agg(metrics=pds.query_binary_metrics("target", "score", 0.9))
+    .unnest("metrics")
+    .sort('method','id')
+)
+df_metrics
+```
+
+The range of potential values for each metric is quite variable. 
+
+```{python}
+(
+    df_metrics
+    .drop("method", "id")
+    .select(
+        (cs.all().max() - cs.all().min()).name.prefix("range__"),
+    )
+)
+```
+
+## Lift Charts
+
+The event rate by quantile also shows vastly different patterns for each datset.
+
+```{python}
+# visualize lift curves
+df_lift = df.group_by(
+    "method",
+    "id",
+    bin=pl.col("score")
+    .qcut(10, labels=arange(10).astype(str))
+    .cast(pl.String)
+    .cast(pl.Int16),
+).agg(rate=pl.col("target").mean())
+
+p = ggplot(df_lift)
+p += aes(x="bin", y="rate", color="id", group="id")
+p += geom_line()
+p += facet_grid(cols="method")
+p += theme(legend_position="none", figure_size=(6,4))
+p
+```
+

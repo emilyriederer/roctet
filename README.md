@@ -1,9 +1,9 @@
 ## `roctet`
 
-![](docs/aucs.png)
+![](aucs.png)
 
 > [!TIP]
-> Looking for a quickstart? Check out the [demo notebook](docs/demo.ipynb)
+> Looking for a quickstart? Check out the [demo notebook](user_guide/00-basic-demo.qmd)
 
 The famous [Anscombe's Quartet](https://en.wikipedia.org/wiki/Anscombe%27s_quartet) dataset (and its modern cousin, the [Datasaurus Dozen](https://en.wikipedia.org/wiki/Datasaurus_dozen)) features different datasets with shared summary statistics and regression lines. 
 It serves as a cautionary illustration of the importance of EDA. The excellent R package [`{quartets}`}(https://github.com/r-causal/quartets) further catalogues such datasets which share superficial similarities while masking different fundamentals.

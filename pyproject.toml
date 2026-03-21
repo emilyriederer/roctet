@@ -11,6 +11,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "great-docs>=0.1.0",
     "numpy>=2.0.0",
     "polars>=1.20.0",
     "scipy>=1.13.0",
@@ -36,6 +37,9 @@ dev = [
     "pyarrow>=23.0.1",
     "pytest>=9.0.2",
 ]
+
+[tool.uv.sources]
+great-docs = { git = "https://github.com/posit-dev/great-docs" }
 
 [project.urls] 
 "Source" = "https://github.com/emilyriederer/roctet/"
