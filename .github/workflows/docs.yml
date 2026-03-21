@@ -29,6 +29,8 @@ jobs:
         with:
           # Caching is enabled by default on GitHub-hosted runners
           enable-cache: true 
+
+      - name: Intall package and dependencies
         run: |
           uv sync
 
