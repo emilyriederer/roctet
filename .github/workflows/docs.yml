@@ -33,6 +33,7 @@ jobs:
       - name: Intall package and dependencies
         run: |
           uv sync
+          uv add great-docs
 
 
       - name: Set up Quarto
