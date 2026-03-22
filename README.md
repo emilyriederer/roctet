@@ -1,5 +1,7 @@
 ## `roctet`
 
+[![Stability: Experimental](https://masterminds.github.io/stability/experimental.svg)](https://masterminds.github.io/stability/experimental.html)
+
 ![](aucs.png)
 
 > [!TIP]
